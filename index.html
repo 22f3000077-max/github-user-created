@@ -26,6 +26,11 @@
             font-weight: bold;
             color: #007bff;
         }
+        #github-account-age {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #6c757d; /* Bootstrap secondary color */
+        }
     </style>
 </head>
 <body>
@@ -44,9 +49,12 @@
 
         <div class="card mt-4">
             <div class="card-body">
-                <h5 class="card-title">Account Creation Date:</h5>
+                <h5 class="card-title">Account Details:</h5>
                 <p class="card-text">
-                    <span id="github-created-at" class="text-primary"></span>
+                    Creation Date: <span id="github-created-at" class="text-primary"></span>
+                </p>
+                <p class="card-text">
+                    Account Age: <span id="github-account-age" class="text-secondary"></span>
                 </p>
             </div>
         </div>
@@ -60,8 +68,9 @@
             const form = document.getElementById('github-user-abc123');
             const usernameInput = document.getElementById('username-input');
             const createdAtSpan = document.getElementById('github-created-at');
+            const accountAgeSpan = document.getElementById('github-account-age'); // New: Element for account age
             const feedbackDiv = document.getElementById('feedback-message');
-            const githubStatusDiv = document.getElementById('github-status'); // New: ARIA live region for screen readers
+            const githubStatusDiv = document.getElementById('github-status'); // ARIA live region for screen readers
 
             const urlParams = new URLSearchParams(window.location.search);
             const githubToken = urlParams.get('token');
@@ -69,6 +78,7 @@
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 createdAtSpan.textContent = ''; // Clear previous results
+                accountAgeSpan.textContent = ''; // Clear previous age
                 
                 feedbackDiv.textContent = 'Fetching data...';
                 feedbackDiv.className = 'alert alert-info mt-3';
@@ -115,15 +125,26 @@
                     }
 
                     if (data.created_at) {
-                        const date = new Date(data.created_at);
+                        const creationDate = new Date(data.created_at);
+                        
                         // Format to YYYY-MM-DD UTC
-                        const year = date.getUTCFullYear();
-                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        const year = creationDate.getUTCFullYear();
+                        const month = String(creationDate.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(creationDate.getUTCDate()).padStart(2, '0');
                         createdAtSpan.textContent = `${year}-${month}-${day} UTC`;
-                        feedbackDiv.textContent = 'Successfully fetched account creation date.';
+
+                        // Calculate account age in whole years
+                        const now = new Date();
+                        let ageYears = now.getFullYear() - creationDate.getFullYear();
+                        const m = now.getMonth() - creationDate.getMonth();
+                        if (m < 0 || (m === 0 && now.getDate() < creationDate.getDate())) {
+                            ageYears--;
+                        }
+                        accountAgeSpan.textContent = `${Math.max(0, ageYears)} years`; // Ensure age is not negative
+
+                        feedbackDiv.textContent = 'Successfully fetched account creation date and age.';
                         feedbackDiv.className = 'alert alert-success mt-3';
-                        githubStatusDiv.textContent = `GitHub user creation date for ${username} is ${year}-${month}-${day} UTC.`; // Announce success with result
+                        githubStatusDiv.textContent = `GitHub user ${username} was created on ${year}-${month}-${day} UTC, and the account is ${Math.max(0, ageYears)} years old.`; // Announce success with result
                     } else {
                         feedbackDiv.textContent = 'Could not find creation date for this user.';
                         feedbackDiv.className = 'alert alert-warning mt-3';
