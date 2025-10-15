@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub User Creation Date</title>
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin-top: 50px;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-label {
+            font-weight: bold;
+        }
+        #github-created-at {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4 text-center">GitHub User Creation Date</h1>
+        <form id="github-user-abc123" class="mb-4">
+            <div class="mb-3">
+                <label for="username-input" class="form-label">GitHub Username:</label>
+                <input type="text" class="form-control" id="username-input" placeholder="e.g., octocat" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Fetch Creation Date</button>
+        </form>
+
+        <div id="feedback-message" class="mt-3"></div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Account Creation Date:</h5>
+                <p class="card-text">
+                    <span id="github-created-at" class="text-primary"></span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('github-user-abc123');
+            const usernameInput = document.getElementById('username-input');
+            const createdAtSpan = document.getElementById('github-created-at');
+            const feedbackDiv = document.getElementById('feedback-message');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const githubToken = urlParams.get('token');
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                createdAtSpan.textContent = ''; // Clear previous results
+                feedbackDiv.textContent = 'Fetching data...';
+                feedbackDiv.className = 'alert alert-info mt-3';
+
+                const username = usernameInput.value.trim();
+                if (!username) {
+                    feedbackDiv.textContent = 'Please enter a GitHub username.';
+                    feedbackDiv.className = 'alert alert-warning mt-3';
+                    return;
+                }
+
+                const apiUrl = `https://api.github.com/users/${username}`;
+                const fetchOptions = {
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                };
+
+                if (githubToken) {
+                    fetchOptions.headers['Authorization'] = `Bearer ${githubToken}`;
+                }
+
+                try {
+                    const response = await fetch(apiUrl, fetchOptions);
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        let errorMessage = `Error: ${response.status} ${response.statusText}.`;
+                        if (data && data.message) {
+                            errorMessage = `Error: ${data.message}.`;
+                            if (response.status === 403 && data.message.includes('rate limit exceeded')) {
+                                errorMessage += " You might be rate-limited. Try again later or provide a token in the URL (e.g., ?token=YOUR_TOKEN).";
+                            } else if (response.status === 404) {
+                                errorMessage = `Error: GitHub user "${username}" not found.`;
+                            }
+                        }
+                        feedbackDiv.textContent = errorMessage;
+                        feedbackDiv.className = 'alert alert-danger mt-3';
+                        return;
+                    }
+
+                    if (data.created_at) {
+                        const date = new Date(data.created_at);
+                        // Format to YYYY-MM-DD UTC
+                        const year = date.getUTCFullYear();
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+                        createdAtSpan.textContent = `${year}-${month}-${day} UTC`;
+                        feedbackDiv.textContent = 'Successfully fetched account creation date.';
+                        feedbackDiv.className = 'alert alert-success mt-3';
+                    } else {
+                        feedbackDiv.textContent = 'Could not find creation date for this user.';
+                        feedbackDiv.className = 'alert alert-warning mt-3';
+                    }
+
+                } catch (error) {
+                    feedbackDiv.textContent = `Network error: ${error.message}. Please check your internet connection.`;
+                    feedbackDiv.className = 'alert alert-danger mt-3';
+                    console.error('Fetch error:', error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
